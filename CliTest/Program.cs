@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CliUi;
 
 namespace CliTest
 {
@@ -10,6 +7,10 @@ namespace CliTest
     {
         static void Main(string[] args)
         {
+            var cui = CmdLineUi.Instance;
+            Action action = () => { Console.WriteLine("hello"); };
+            cui.Add("hello", action, 2);
+
         }
     }
 }

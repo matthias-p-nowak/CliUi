@@ -322,6 +322,7 @@ namespace CliUi
                             {
                                 Console.WriteLine($"no matching command for {keystrokes}");
                                 keystrokes = string.Empty;
+                                key = Console.ReadKey(true);
                                 continue;
                             }
                             if (commandPos >= cmdList.Count)

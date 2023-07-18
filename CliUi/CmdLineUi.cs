@@ -442,7 +442,8 @@ namespace CliUi
                 switch (k.Key)
                 {
                     case ConsoleKey.Enter:
-                        Console.WriteLine();
+                        if (!string.IsNullOrWhiteSpace(response))
+                            Console.WriteLine();
                         return response;
                     case ConsoleKey.UpArrow:
                     case ConsoleKey.DownArrow:

@@ -1,4 +1,4 @@
-# CliUI - a simplified comannd line (interface) user interface
+# CliUI - a simplified command line (interface) user interface
 
 ## How does it work
 

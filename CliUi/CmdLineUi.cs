@@ -96,21 +96,33 @@ namespace CliUi
         {
             lock (Console.Out)
             {
-                Console.BufferWidth = Console.WindowWidth;
-                Console.CursorLeft = 0;
-                if (Console.BufferHeight > maxHeight)
-                    Console.BufferHeight = maxHeight;
                 var oldCursorTop = Console.CursorTop;
                 var oldWindowTop = Console.WindowTop;
+                Console.BufferWidth = Console.WindowWidth;
+                Console.CursorLeft = 0;
                 try
                 {
-                    int newHeight = Console.CursorTop + Console.WindowHeight;
-                    if (Console.BufferHeight < newHeight)
-                        Console.BufferHeight = newHeight;
+                    if (Console.BufferHeight > maxHeight)
+                        Console.BufferHeight = maxHeight;
+                    try
+                    {
+                        int newHeight = Console.CursorTop + Console.WindowHeight;
+                        if (Console.BufferHeight < newHeight)
+                            Console.BufferHeight = newHeight;
+                    }
+                    catch
+                    {
+                        Console.WriteLine("no new BufferHeight");
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    Console.WriteLine("no new BufferHeight");
+                    if (oldCursorTop > Console.BufferHeight - Console.WindowHeight)
+                    {
+                        var moveHeight = oldCursorTop - Console.BufferHeight + Console.WindowHeight;
+                        Console.MoveBufferArea(0, moveHeight, Console.BufferWidth, Console.BufferHeight - moveHeight, 0, 0);
+                        oldCursorTop -= moveHeight;
+                    }
                 }
                 Console.BackgroundColor = bgColor;
                 Console.ForegroundColor = fgColor;
@@ -195,6 +207,8 @@ namespace CliUi
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.CursorTop = Console.BufferHeight - 1;
             Console.WriteLine("Please enter command to execute");
+            if (Console.BufferHeight > maxHeight) 
+                Console.BufferHeight = maxHeight;
             // initial settings
             running = true;
             // for ending the loop

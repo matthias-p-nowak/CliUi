@@ -7,7 +7,7 @@
     <PackageProjectUrl>https://github.com/matthias-p-nowak/CliUi</PackageProjectUrl>
     <PackageReadmeFile>Readme.md</PackageReadmeFile>
     <PackageLicenseFile>License.md</PackageLicenseFile>
-	<VersionPrefix>1.0.5</VersionPrefix>
+	<VersionPrefix>1.0.7</VersionPrefix>
   </PropertyGroup>
 
   <ItemGroup>

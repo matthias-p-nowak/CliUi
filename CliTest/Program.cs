@@ -11,6 +11,8 @@ namespace CliTest
         {
             Console.WriteLine("hello");
         }
+
+        [CmdLine("print a lot of lines")]
         static void PrintLines()
         {
             for (int i = 0; i < 50; ++i)
@@ -36,7 +38,14 @@ namespace CliTest
                 }
             }
         }
-        static void AddMore() {
+        [CmdLineAdder]
+        public static void AddMyCommands(CmdLineUi cui)
+        {
+            cui.Add("pages", () => { TestPages(cui); }, 0);
+        }
+
+        [CmdLine("add just a few more commands")]
+        public static void AddMore() {
             var cui=CmdLineUi.Instance;
             Console.WriteLine("adding more commands");
             for(int i=0;i < 3; ++i) {
@@ -48,10 +57,9 @@ namespace CliTest
         static void Main(string[] args)
         {
             var cui = CmdLineUi.Instance;
+            //cui.Debug = true;
             cui.Add("hello", WriteHello, 0);
-            cui.Add("lines",PrintLines, 0);
-            cui.Add("pages", () => { TestPages(cui); }, 0);
-            cui.Add("add just a few more commands", AddMore, 0);
+            cui.Scan4Commands();
             cui.CommandLoop();
         }
     }

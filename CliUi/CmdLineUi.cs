@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -45,6 +47,7 @@ namespace CliUi
         /// </summary>
         private int commandPos = 0;
         private int lastRowPos = 0;
+        public bool Debug=false;
 
         /// <summary>
         /// Adds a new possible command line to the dictionary, 
@@ -361,7 +364,7 @@ namespace CliUi
                             if (cmdList.Count == 0)
                             {
                                 Console.CursorTop = oldCursorTop;
-                                NextPage(ConsoleColor.Yellow, ConsoleColor.DarkRed);                                
+                                NextPage(ConsoleColor.Yellow, ConsoleColor.DarkRed);
                                 Console.WriteLine($"no matching command for {keystrokes}");
                                 keystrokes = string.Empty;
                                 key = Console.ReadKey(true);
@@ -508,6 +511,55 @@ namespace CliUi
                 Console.Write($"{response}  \b\b");
             }
 
+        }
+
+        public void Scan4Commands()
+        {
+            var cmdLineAssemblyName = this.GetType().Assembly.GetName();
+            int priority = 0;
+            foreach (var loaded_assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var found = false;
+                foreach (var dep_assembly in loaded_assembly.GetReferencedAssemblies())
+                {
+                    if (cmdLineAssemblyName.Name.CompareTo(dep_assembly.Name) == 0 &&
+                        cmdLineAssemblyName.Version.CompareTo(dep_assembly.Version) == 0)
+                    {
+                        if (Debug)
+                        {
+                            Console.WriteLine($"considering assembly {dep_assembly.Name}");
+                        }
+                        foreach (var loaded_type in loaded_assembly.GetTypes())
+                        {
+                            foreach (var method in loaded_type.GetMethods())
+                            {
+                                if (!method.IsStatic)
+                                    continue;
+                                foreach (CmdLineAttribute attr in method.GetCustomAttributes(typeof(CmdLineAttribute), false))
+                                {
+                                    var this_method = method;
+                                    Action ac = () => { this_method.Invoke(null, new object[] { }); };
+                                    priority = Add(attr.CmdLine, ac, priority);
+                                    if (Debug)
+                                    {
+                                        Console.WriteLine($"added '{attr.CmdLine}' -> {loaded_assembly.GetName().Name}.{loaded_type.Name}.{this_method.Name}");
+                                    }
+                                }
+                                foreach (CmdLineAdderAttribute attr in method.GetCustomAttributes(typeof(CmdLineAdderAttribute), false))
+                                {
+                                    method.Invoke(null, new object[] { this });
+                                    if (Debug)
+                                    {
+                                        Console.WriteLine($"executed {loaded_assembly.GetName().Name}.{loaded_type.Name}.{method.Name}");
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    }
+
+                }
+            }
         }
     }
 }

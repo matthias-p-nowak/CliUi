@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 namespace CliUi
@@ -319,7 +315,7 @@ namespace CliUi
                         {
                             commandPos = 0;
                             cmdList.Clear();
-                            if (keystrokes.Length > 1)
+                            if (keystrokes.Length > 0)
                                 keystrokes = keystrokes.Substring(0, keystrokes.Length - 1);
                         }
                         else if (Char.IsLetterOrDigit(key.KeyChar))
@@ -519,7 +515,6 @@ namespace CliUi
             int priority = 0;
             foreach (var loaded_assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                var found = false;
                 foreach (var dep_assembly in loaded_assembly.GetReferencedAssemblies())
                 {
                     if (cmdLineAssemblyName.Name.CompareTo(dep_assembly.Name) == 0 &&

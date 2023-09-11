@@ -218,7 +218,7 @@ namespace CliUi
             running = true;
             // for ending the loop
             Action a = () => { running = false; };
-            Add("exit application", a, 2);
+            Add("Exit application", a, 2);
             // entering the loop
             while (running)
             {
@@ -437,6 +437,8 @@ namespace CliUi
         /// <returns>a list of matching positions</returns>
         private static List<int> CheckString(string heystack, string keystrokes)
         {
+            heystack = heystack.ToLower(); 
+            keystrokes= keystrokes.ToLower();
             var l = new List<int>();
             int pos = -1;
             foreach (char c in keystrokes)

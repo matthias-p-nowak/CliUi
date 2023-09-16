@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading;
 
 namespace CliUi
@@ -17,7 +18,7 @@ namespace CliUi
         /// singleton instance, lazy initialized
         /// </summary>
         private static Lazy<CmdLineUi> _instance = new Lazy<CmdLineUi>();
-        /// <summary>
+        /// <summary>**/
         /// provides access to a singleton instance, use of others is possible
         /// </summary>
         public static CmdLineUi Instance { get => _instance.Value; }
@@ -43,7 +44,12 @@ namespace CliUi
         /// </summary>
         private int commandPos = 0;
         private int lastRowPos = 0;
-        public bool Debug=false;
+        public bool Debug = false;
+        public Action<Exception> ExLog = DummyLog;
+
+        private static void DummyLog(Exception exception)
+        {
+        }
 
         /// <summary>
         /// Adds a new possible command line to the dictionary, 
@@ -101,50 +107,23 @@ namespace CliUi
             // writing might move top content out of the buffer making space for new
             Console.Write(s);
             Console.CursorLeft = 0;
-            Console.CursorTop -= Console.WindowHeight;
+            if (Console.CursorTop >= Console.WindowHeight)
+                Console.CursorTop -= Console.WindowHeight;
             // cursor is back to where it was in the printout, however, the top part might have been 
             // remembering lastRowPos for the pager
             lastRowPos = Console.CursorTop;
             // scrolling the window back, need to calculate it from current cursor position
-            Console.WindowTop = lastRowPos - posInWindow;
+            try
+            {
+                Console.WindowTop = lastRowPos - posInWindow;
+            }
+            catch (ArgumentOutOfRangeException aore)
+            {
+                ExLog(aore);
+                Console.BufferHeight += Console.WindowHeight;
+                Console.WindowTop = lastRowPos - posInWindow;
+            }
         }
-        //public void Clear(string indictor, ConsoleColor bgColor = ConsoleColor.Black, ConsoleColor fgColor = ConsoleColor.Gray) {
-        //    lock (Console.Out) {
-        //        var oldCursorTop = Console.CursorTop;
-        //        var oldWindowTop = Console.WindowTop;
-        //        Console.BufferWidth = Console.WindowWidth;
-        //        Console.CursorLeft = 0;
-        //        try {
-        //            if (Console.BufferHeight > maxHeight)
-        //                Console.BufferHeight = maxHeight;
-        //            try {
-        //                int newHeight = Console.CursorTop + Console.WindowHeight;
-        //                if (Console.BufferHeight < newHeight)
-        //                    Console.BufferHeight = newHeight;
-        //            }
-        //            catch {
-        //                Console.WriteLine("no new BufferHeight");
-        //            }
-        //        }
-        //        catch (Exception ex) {
-        //            if (oldCursorTop > Console.BufferHeight - Console.WindowHeight) {
-        //                var moveHeight = oldCursorTop - Console.BufferHeight + Console.WindowHeight;
-        //                Console.MoveBufferArea(0, moveHeight, Console.BufferWidth, Console.BufferHeight - moveHeight, 0, 0);
-        //                oldCursorTop -= moveHeight;
-        //            }
-        //        }
-        //        Console.BackgroundColor = bgColor;
-        //        Console.ForegroundColor = fgColor;
-        //        var es = new String(' ', Console.WindowWidth * Console.WindowHeight);
-        //        Console.Write(es);
-        //        if (!string.IsNullOrWhiteSpace(indictor)) {
-        //            Console.CursorLeft = Console.WindowWidth - indictor.Length;
-        //            Console.Write(indictor);
-        //        }
-        //        Console.CursorLeft = 0;
-        //        Console.CursorTop = oldCursorTop;
-        //    }
-        //}
 
         /// <summary>
         /// This methods moves the curser up and down according to keypresses Arrow up/down, page up/down
@@ -211,9 +190,6 @@ namespace CliUi
         /// </summary>
         public void CommandLoop()
         {
-            // initial response presented to user
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Please enter command to execute");
             // initial settings
             running = true;
             // for ending the loop
@@ -247,7 +223,16 @@ namespace CliUi
                     var oldWindowTop = Console.WindowTop;
                     var oldCursorTop = Console.CursorTop;
                     // scrolls windows down a bit, so cursor is on top
-                    Console.WindowTop = Console.CursorTop;
+                    try
+                    {
+                        Console.WindowTop = Console.CursorTop;
+                    }
+                    catch (ArgumentOutOfRangeException aore)
+                    {
+                        ExLog(aore);
+                        Console.BufferHeight += Console.WindowHeight;
+                        Console.WindowTop = Console.CursorTop;
+                    }
                     // working with those variables
                     commandPos = 0;
                     var cmdList = new List<string>();
@@ -276,7 +261,6 @@ namespace CliUi
                                     cmd.priority = maxPriority + 1;
                                     cmdAction = cmd.ac;
                                 }
-
                                 // writing executed command on screen
                                 Console.ForegroundColor = ConsoleColor.Green;
                                 Console.Write((char)187);
@@ -394,8 +378,9 @@ namespace CliUi
                             {
                                 posList = positions[cmd];
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
+                                ExLog(ex);
                                 // this should not happen
                                 posList = new List<int>();
                             }
@@ -427,7 +412,7 @@ namespace CliUi
                     }
                 }
             } // while running
-            Console.WriteLine("loop ended, back to normal");
+            // Console.WriteLine("loop ended, back to normal");
         }
         /// <summary>
         /// Creates a list of matching positions
@@ -437,8 +422,8 @@ namespace CliUi
         /// <returns>a list of matching positions</returns>
         private static List<int> CheckString(string heystack, string keystrokes)
         {
-            heystack = heystack.ToLower(); 
-            keystrokes= keystrokes.ToLower();
+            heystack = heystack.ToLower();
+            keystrokes = keystrokes.ToLower();
             var l = new List<int>();
             int pos = -1;
             foreach (char c in keystrokes)
@@ -517,45 +502,52 @@ namespace CliUi
             int priority = 0;
             foreach (var loaded_assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                foreach (var dep_assembly in loaded_assembly.GetReferencedAssemblies())
+                try
                 {
-                    if (cmdLineAssemblyName.Name.CompareTo(dep_assembly.Name) == 0 &&
-                        cmdLineAssemblyName.Version.CompareTo(dep_assembly.Version) == 0)
+                    foreach (var dep_assembly in loaded_assembly.GetReferencedAssemblies())
                     {
-                        if (Debug)
+                        if (cmdLineAssemblyName.Name.CompareTo(dep_assembly.Name) == 0 &&
+                            cmdLineAssemblyName.Version.CompareTo(dep_assembly.Version) == 0)
                         {
-                            Console.WriteLine($"considering assembly {dep_assembly.Name}");
-                        }
-                        foreach (var loaded_type in loaded_assembly.GetTypes())
-                        {
-                            foreach (var method in loaded_type.GetMethods())
+                            if (Debug)
                             {
-                                if (!method.IsStatic)
-                                    continue;
-                                foreach (CmdLineAttribute attr in method.GetCustomAttributes(typeof(CmdLineAttribute), false))
+                                Console.WriteLine($"considering assembly {dep_assembly.Name}");
+                            }
+                            foreach (var loaded_type in loaded_assembly.GetTypes())
+                            {
+                                foreach (var method in loaded_type.GetMethods())
                                 {
-                                    var this_method = method;
-                                    Action ac = () => { this_method.Invoke(null, new object[] { }); };
-                                    priority = Add(attr.CmdLine, ac, priority);
-                                    if (Debug)
+                                    if (!method.IsStatic)
+                                        continue;
+                                    foreach (CmdLineAttribute attr in method.GetCustomAttributes(typeof(CmdLineAttribute), false))
                                     {
-                                        Console.WriteLine($"added '{attr.CmdLine}' -> {loaded_assembly.GetName().Name}.{loaded_type.Name}.{this_method.Name}");
+                                        var this_method = method;
+                                        Action ac = () => { this_method.Invoke(null, new object[] { }); };
+                                        priority = Add(attr.CmdLine, ac, priority);
+                                        if (Debug)
+                                        {
+                                            Console.WriteLine($"added '{attr.CmdLine}' -> {loaded_assembly.GetName().Name}.{loaded_type.Name}.{this_method.Name}");
+                                        }
                                     }
-                                }
-                                foreach (CmdLineAdderAttribute attr in method.GetCustomAttributes(typeof(CmdLineAdderAttribute), false))
-                                {
-                                    method.Invoke(null, new object[] { this });
-                                    if (Debug)
+                                    foreach (CmdLineAdderAttribute attr in method.GetCustomAttributes(typeof(CmdLineAdderAttribute), false))
                                     {
-                                        Console.WriteLine($"executed {loaded_assembly.GetName().Name}.{loaded_type.Name}.{method.Name}");
+                                        method.Invoke(null, new object[] { this });
+                                        if (Debug)
+                                        {
+                                            Console.WriteLine($"executed {loaded_assembly.GetName().Name}.{loaded_type.Name}.{method.Name}");
+                                        }
                                     }
                                 }
                             }
+                            break;
                         }
-                        break;
                     }
-
                 }
+                catch (Exception ex)
+                {
+                    ExLog(ex);
+                }
+
             }
         }
     }

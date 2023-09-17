@@ -107,15 +107,21 @@ namespace CliUi
             // writing might move top content out of the buffer making space for new
             Console.Write(s);
             Console.CursorLeft = 0;
-            if (Console.CursorTop >= Console.WindowHeight)
-                Console.CursorTop -= Console.WindowHeight;
+            var backPos = Console.CursorTop - Console.WindowHeight;
+            if (backPos < 0)
+                backPos = 0;
+            Console.CursorTop = backPos;
             // cursor is back to where it was in the printout, however, the top part might have been 
             // remembering lastRowPos for the pager
             lastRowPos = Console.CursorTop;
             // scrolling the window back, need to calculate it from current cursor position
             try
             {
-                Console.WindowTop = lastRowPos - posInWindow;
+
+                var backWPos = lastRowPos - posInWindow;
+                if (backWPos < 0)
+                    backWPos = 0;
+                Console.WindowTop = backWPos;
             }
             catch (ArgumentOutOfRangeException aore)
             {

@@ -85,7 +85,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="mine" BeforeTargets="BeforeCompile">
+  <Target Name="BuildVersion" BeforeTargets="BeforeCompile">
     <Message Text="Configuration is $(Configuration)" />
     <PropertyGroup>
       <BuildCs>namespace $(RootNamespace){ 

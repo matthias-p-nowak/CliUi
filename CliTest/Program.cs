@@ -140,7 +140,9 @@ namespace CliTest
                 {
                     if (dbgFile == null)
                     {
-                        dbgFile = File.CreateText("debug.txt");
+                        var dir = @"C:\temp\log";
+                        Directory.CreateDirectory(dir);
+                        dbgFile = File.CreateText(Path.Combine(dir,"debug.txt"));
                     }
                 }
             }

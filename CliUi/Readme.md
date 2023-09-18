@@ -2,17 +2,32 @@
 
 ## How does it work
 
-It maintains a dictionary with complete command lines as keys and actions/priority as values. New commands can be added as a result of a command and also commands can be removed.
+It maintains a dictionary with complete command lines as keys and actions/priority as values. 
+New commands can be added as a result of a command and also commands can be removed.
 
-When idle, the loop waits for available keypresses and then locks `Console.Out`. If a lock can be obtained, it will display the list of commands that match. A cursor can be used to select a command. By pressing enter, the command is carried out in the foreground. The command itself can start a background task.
+When idle, the loop waits for available keypresses and then locks `Console.Out`. 
+If a lock can be obtained, it will read a line from input. 
+The user can enter an arbitrary sequence of characters, 
+which then get matched against the internal stored list.
+If no stored command matches the list, the interface will display `sorry` and wait for the next input.
+If only one command matches, it will be executed immediately.
+If more commands matches, the list will be displayed with the matched characters highlighted.
+The user then can enter the number from that list.
+
 
 ## Programming it
 
-One obtains an instance of the `CmdLineUi.Instance`. One can then add commands using the `Add` function before entering `CommandLoop`.
+One obtains an instance of the `CmdLineUi.Instance`. 
+One can then add commands using the `Add` function before entering `CommandLoop`.
 
 ## Using it
 
-After the program starts, it enters the `CommandLoop`. After pressing the first key, the UI presents a limited list of commands that contain the key. Further keypresses further limits the list only containing commands that have those keys in that order. Once can use the cursor keys to select the right command.
+First, the user might obtain an instance of the interface.
+Then, the `Scan4cmds` can  be executed that searches the loaded assemblies for `public static void XX()` with the custom attribute `CmdLine`.
+Functions with the `CmdLineAdder` can be used to add several dynamically created commands.
+
+Then, executing `CommandLoop` will enter a loop that only the *Exit Phrase* will end. 
+
 
 ## Locking `Console.Out`
 

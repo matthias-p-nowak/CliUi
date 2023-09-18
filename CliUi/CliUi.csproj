@@ -7,7 +7,7 @@
     <PackageProjectUrl>https://github.com/matthias-p-nowak/CliUi</PackageProjectUrl>
     <PackageReadmeFile>Readme.md</PackageReadmeFile>
     <PackageLicenseFile>License.md</PackageLicenseFile>
-	<VersionPrefix>1.0.18</VersionPrefix>
+	<VersionPrefix>1.1.1</VersionPrefix>
 	  <Authors>Matthias P. Nowak</Authors>
 	  <Description>User selects commands to run by entering a few keys like autofill.</Description>
 	  <PackageId>Matthias77.$(AssemblyName)</PackageId>

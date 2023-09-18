@@ -34,24 +34,26 @@ namespace CliTest
         {
             lock (Console.Out)
             {
-                cui.NextPage();
-                for (int i = 0; i < 200; ++i)
+                try
                 {
-                    Console.WriteLine($"{i,3} ct={Console.CursorTop} bh={Console.BufferHeight}");
-                    Thread.Sleep(100);
-                    var resp = cui.Pager();
-                    if (!string.IsNullOrEmpty(resp))
+                    int posRef = 0;
+                    for (int i = 0; i < 200; ++i)
                     {
-                        Console.WriteLine($"got {resp}");
-                        break;
+                        Console.WriteLine($"{i,3} ct={Console.CursorTop} bh={Console.BufferHeight}");
+                        Thread.Sleep(100);
+                        cui.Pager(ref posRef);
                     }
+                }
+                catch (CmdLineInterrupt interrupt)
+                {
+                    Console.WriteLine($"text: {interrupt.Text}, number: {interrupt.Number}");
                 }
             }
         }
         [CmdLineAdder]
         public static void AddMyCommands(CmdLineUi cui)
         {
-            cui.Add("pages", () => { TestPages(cui); }, 0);
+            cui.Add("pages", () => { TestPages(cui); });
         }
 
         [CmdLine("add just a few more commands")]
@@ -63,7 +65,7 @@ namespace CliTest
             {
                 var guid = Guid.NewGuid();
                 var cmd = $"new command {guid}";
-                cui.Add(cmd, AddMore, 0);
+                cui.Add(cmd, AddMore);
             }
         }
 
@@ -94,7 +96,7 @@ namespace CliTest
                     case ConsoleKey.F:
                         {
                             //cui.Debug = true;
-                            cui.Add("hello", WriteHello, 0);
+                            cui.Add("hello", WriteHello);
                             cui.Scan4Commands();
                             Console.WriteLine("looping");
                             cui.CommandLoop();
@@ -107,9 +109,6 @@ namespace CliTest
                         {
                             Console.WriteLine($"modifiers {k.Modifiers}");
                         }
-                        break;
-                    case ConsoleKey.N:
-                        cui.NextPage(ConsoleColor.Gray, ConsoleColor.DarkBlue);
                         break;
                     case ConsoleKey.P:
                         Console.WriteLine($"c: {Console.CursorLeft}/{Console.CursorTop} w: {Console.WindowLeft}/{Console.WindowTop}" +
@@ -151,18 +150,21 @@ namespace CliTest
                     {
                         var dir = @"C:\temp\log";
                         Directory.CreateDirectory(dir);
-                        dbgFile = File.CreateText(Path.Combine(dir,"debug.txt"));
+                        dbgFile = File.CreateText(Path.Combine(dir, "debug.txt"));
                     }
                 }
             }
             var dts = DateTime.Now.ToString("hh:mm:ss.FFF");
             dbgFile.WriteLine("--- Exception {dts} ---");
-            dbgFile.WriteLine(msg); 
-            for(var cex=ex;cex != null;cex = ex.InnerException)
+            dbgFile.WriteLine(msg);
+            for (var cex = ex; cex != null; cex = ex.InnerException)
             {
                 dbgFile.WriteLine($"{cex.GetType()}: {cex.Message}");
             }
-            dbgFile.WriteLine($" at {ex.StackTrace}");
+            if (ex != null && ex.StackTrace != null)
+            {
+                dbgFile.WriteLine($" at {ex.StackTrace}");
+            }
         }
 
         private static void TestConsole()

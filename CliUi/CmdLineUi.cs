@@ -216,30 +216,42 @@ namespace CliUi
         /// <exception cref="CmdLineInterrupt">throws an exception if user enters something else than return</exception>
         public void Pager(ref int curPos, bool force = false)
         {
+            var fgColor = Console.ForegroundColor;
+            var bgColor = Console.BackgroundColor;
             if (Console.KeyAvailable || ++curPos > Console.WindowHeight - 2 || force)
             {
-                var response = Console.ReadLine();
-                Console.CursorTop -= 1; // going up one line
-                curPos = 0;
-                if (!force && string.IsNullOrWhiteSpace(response))
+                try
                 {
-                    return;
-                }
-                var match = responseRegExp.Match(response);
-                if (match.Success)
-                {
-                    var str = match.Groups["txt"].Value.ToLower();
-                    var numStr = match.Groups["digits"].Value;
-                    int number = 0;
-                    if (numStr.Length > 0)
+                    Console.ResetColor();
+                    var response = Console.ReadLine();
+                    Console.CursorTop -= 1; // going up one line
+                    curPos = 0;
+                    if (!force && string.IsNullOrWhiteSpace(response))
                     {
-                        number = int.Parse(numStr);
+
+                        return;
                     }
-                    throw new CmdLineInterrupt(str, number);
+                    var match = responseRegExp.Match(response);
+                    if (match.Success)
+                    {
+                        var str = match.Groups["txt"].Value.ToLower();
+                        var numStr = match.Groups["digits"].Value;
+                        int number = 0;
+                        if (numStr.Length > 0)
+                        {
+                            number = int.Parse(numStr);
+                        }
+                        throw new CmdLineInterrupt(str, number);
+                    }
+                    else
+                    {
+                        ExLog($"cannot match {response}", null);
+                    }
                 }
-                else
+                finally
                 {
-                    ExLog($"cannot match {response}", null);
+                    Console.ForegroundColor = fgColor;
+                    Console.BackgroundColor = bgColor;
                 }
             }
         }

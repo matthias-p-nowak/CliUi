@@ -22,6 +22,11 @@ namespace CliUi
         /// provides access to a singleton instance, use of others is possible
         /// </summary>
         public static CmdLineUi Instance { get => _instance.Value; }
+        /// <summary>
+        /// contains the current command line executed
+        /// </summary>
+        public string CurrentCommand { get => currentCommand; }
+
 
         /// <summary>
         /// when using cursor keys to go up in history, this is idle time in 100ms , 50==5 seconds
@@ -45,9 +50,10 @@ namespace CliUi
         private int commandPos = 0;
         private int lastRowPos = 0;
         public bool Debug = false;
-        public Action<Exception> ExLog = DummyLog;
+        public Action<string, Exception> ExLog=DummyLog;
+        private string currentCommand;
 
-        private static void DummyLog(Exception exception)
+        private static void DummyLog(string msg, Exception exception)
         {
         }
 
@@ -125,7 +131,7 @@ namespace CliUi
             }
             catch (ArgumentOutOfRangeException aore)
             {
-                ExLog(aore);
+                ExLog("handled by increasing buffer height", aore);
                 Console.BufferHeight += Console.WindowHeight;
                 Console.WindowTop = lastRowPos - posInWindow;
             }
@@ -226,6 +232,7 @@ namespace CliUi
                         Console.WriteLine();
                     // now have space to print all commands
                     // remembering the positions
+                    NextPage(ConsoleColor.White, ConsoleColor.DarkGreen);
                     var oldWindowTop = Console.WindowTop;
                     var oldCursorTop = Console.CursorTop;
                     // scrolls windows down a bit, so cursor is on top
@@ -235,7 +242,7 @@ namespace CliUi
                     }
                     catch (ArgumentOutOfRangeException aore)
                     {
-                        ExLog(aore);
+                        ExLog("handled", aore);
                         Console.BufferHeight += Console.WindowHeight;
                         Console.WindowTop = Console.CursorTop;
                     }
@@ -259,18 +266,18 @@ namespace CliUi
                                 break;
                             if (commandPos < cmdList.Count)
                             {
-                                var c = cmdList[commandPos];
+                                currentCommand = cmdList[commandPos];
                                 Action cmdAction;
                                 lock (commands)
                                 {
-                                    var cmd = commands[c];
+                                    var cmd = commands[currentCommand];
                                     cmd.priority = maxPriority + 1;
                                     cmdAction = cmd.ac;
                                 }
                                 // writing executed command on screen
                                 Console.ForegroundColor = ConsoleColor.Green;
                                 Console.Write((char)187);
-                                Console.WriteLine(c);
+                                Console.WriteLine(currentCommand);
                                 Console.ResetColor();
                                 cmdAction();
                             }
@@ -370,6 +377,7 @@ namespace CliUi
                         //Thread.Sleep(500);
                         Console.CursorTop = oldCursorTop;
                         NextPage(ConsoleColor.Gray, ConsoleColor.DarkBlue);
+                        oldWindowTop = Console.CursorTop;
                         //Thread.Sleep(500);
                         for (int i = 0; i < wh; ++i)
                         {
@@ -386,7 +394,7 @@ namespace CliUi
                             }
                             catch (Exception ex)
                             {
-                                ExLog(ex);
+                                ExLog("should not happen",ex);
                                 // this should not happen
                                 posList = new List<int>();
                             }
@@ -407,7 +415,7 @@ namespace CliUi
                             Console.WriteLine(cmd.Substring(pos));
                         }
                         // marking the current selected command
-                        Console.CursorTop = oldCursorTop + commandPos - skip;
+                        Console.CursorTop = oldWindowTop + commandPos - skip;
                         Console.CursorLeft = 0;
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.Write((char)187);
@@ -551,7 +559,7 @@ namespace CliUi
                 }
                 catch (Exception ex)
                 {
-                    ExLog(ex);
+                    ExLog("uncatched",ex);
                 }
 
             }

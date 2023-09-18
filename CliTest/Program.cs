@@ -66,6 +66,15 @@ namespace CliTest
                 cui.Add(cmd, AddMore, 0);
             }
         }
+
+        [CmdLine("duplicate screen buffer height")]
+        public static void DuplicateBufferHeight()
+        {
+            Console.SetBufferSize(Console.WindowWidth, Console.BufferHeight * 2);
+            Console.Clear(); // make it stick
+            Console.WriteLine($"buffer height is {Console.BufferHeight}");
+        }
+
         static void Main(string[] args)
         {
             System.Diagnostics.Debugger.Launch();
@@ -132,7 +141,7 @@ namespace CliTest
             }
         }
 
-        private static void WriteExceptions(Exception ex)
+        private static void WriteExceptions(string msg, Exception ex)
         {
             if (dbgFile == null)
             {
@@ -148,6 +157,7 @@ namespace CliTest
             }
             var dts = DateTime.Now.ToString("hh:mm:ss.FFF");
             dbgFile.WriteLine("--- Exception {dts} ---");
+            dbgFile.WriteLine(msg); 
             for(var cex=ex;cex != null;cex = ex.InnerException)
             {
                 dbgFile.WriteLine($"{cex.GetType()}: {cex.Message}");

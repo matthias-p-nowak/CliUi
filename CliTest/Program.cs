@@ -36,17 +36,19 @@ namespace CliTest
             {
                 try
                 {
-                    int posRef = 0;
                     for (int i = 0; i < 200; ++i)
                     {
                         Console.WriteLine($"{i,3} ct={Console.CursorTop} bh={Console.BufferHeight}");
                         Thread.Sleep(100);
-                        cui.Pager(ref posRef);
+                        cui.Pager();
                     }
                 }
                 catch (CmdLineInterrupt interrupt)
                 {
-                    Console.WriteLine($"text: {interrupt.Text}, number: {interrupt.Number}");
+                    foreach (var txt in interrupt.Words)
+                        Console.WriteLine($"text: {txt}");
+                    foreach (var num in interrupt.Numbers)
+                        Console.WriteLine($"num: {num}");
                 }
             }
         }
@@ -97,7 +99,9 @@ namespace CliTest
                         {
                             //cui.Debug = true;
                             cui.Add("hello", WriteHello);
+                            cui.Debug = true;
                             cui.Scan4Commands();
+                            cui.Debug=false;
                             Console.WriteLine("looping");
                             cui.CommandLoop();
                         }

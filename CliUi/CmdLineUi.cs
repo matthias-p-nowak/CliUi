@@ -45,6 +45,8 @@ namespace CliUi
         /// </summary>
         public string ExitPhrase = "Exit application";
 
+        // for the Pager to work
+        private int pagerRowCount = 0;
         private static void DummyLog(string msg, Exception exception)
         {
         }
@@ -114,13 +116,20 @@ namespace CliUi
                     var keystrokes = string.Empty;
                     if (!Console.KeyAvailable)
                         continue; // someone else took the keypress during the lock
+                    var ct = Console.CursorTop;
+                    var cl = Console.CursorLeft;
+                    var ww = Console.WindowWidth;
+                    Console.SetCursorPosition(ww - 3, Console.WindowTop);
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.Write("cmd");
+                    Console.ResetColor();
+                    Console.SetCursorPosition(cl, ct);
                     keystrokes = Console.ReadLine();
                     Console.CursorTop -= 1;
                     int offset = 1;
                     var remainingChoices = new List<(string cmdLine, Action action)>();
                     try
                     {
-                        int curPos = 0;
                         lock (commands)
                         {
                             foreach (var cmd in commands)
@@ -150,12 +159,13 @@ namespace CliUi
                                 Console.Write(cmd.cmdLine.Substring(pos));
                                 var s = new string(' ', Console.BufferWidth - Console.CursorLeft - 1);
                                 Console.WriteLine(s);
-                                Pager(ref curPos);
+                                Pager();
                             }
                             if (remainingChoices.Count == 0)
                             {
                                 Console.ForegroundColor = ConsoleColor.Yellow;
                                 Console.WriteLine("sorry");
+                                continue;
                             }
                             if (remainingChoices.Count == 1)
                             {
@@ -164,24 +174,24 @@ namespace CliUi
                                 var s = new string(' ', Console.BufferWidth);
                                 Console.Write(s);
                                 Console.CursorLeft = 0;
-                                throw new CmdLineInterrupt(string.Empty, 1);
+                                throw new CmdLineInterrupt(1);
                             }
-                            Pager(ref curPos, true);
+                            Pager(true);
                             continue;
                         }
                     }
                     catch (CmdLineInterrupt interrupt)
                     {
-                        if (interrupt.Number > 0)
+                        if (interrupt.Numbers.Count > 0 && interrupt.Numbers[0] > 0)
                         {
-                            if (interrupt.Number > remainingChoices.Count)
+                            if (interrupt.Numbers[0] > remainingChoices.Count)
                             {
                                 Console.ResetColor();
                                 Console.ForegroundColor = ConsoleColor.Red;
-                                Console.WriteLine($"choice is invalid");
+                                Console.WriteLine($"choice is invalid (too high)");
                                 continue;
                             }
-                            var cmd = remainingChoices[interrupt.Number - 1];
+                            var cmd = remainingChoices[interrupt.Numbers[0] - 1];
                             currentCommand = cmd.cmdLine;
                             Add(cmd.cmdLine, cmd.action); // moving it up
                             Console.ForegroundColor = ConsoleColor.Green;
@@ -189,6 +199,7 @@ namespace CliUi
                             Console.Write((char)187);
                             Console.WriteLine(cmd.cmdLine);
                             Console.ResetColor();
+                            pagerRowCount=0;
                             cmd.action();
                         }
                         else
@@ -203,10 +214,18 @@ namespace CliUi
                     }
                 }
             } // while running
-              // Console.WriteLine("loop ended, back to normal");
+              
+        }
+        /// <summary>
+        /// Resetting the row count for the Pager
+        /// </summary>
+        public void PagerReset()
+        {
+            pagerRowCount= 0;
         }
 
-        private Regex responseRegExp = new Regex(@"^\s*(?<txt>[a-zA-Z]*)\s*(?<digits>\d*)\s*$");
+        private Regex responseRegExp = new Regex(@"\s*(?:(?<txt>[a-zA-Z]+)|(?<le>\d+)-(?<ue>\d+)|(?<sn>\d+))[,\s]*");
+
 
         /// <summary>
         /// 
@@ -214,39 +233,68 @@ namespace CliUi
         /// <param name="curPos"></param>
         /// <param name="force"></param>
         /// <exception cref="CmdLineInterrupt">throws an exception if user enters something else than return</exception>
-        public void Pager(ref int curPos, bool force = false)
+        public void Pager(bool force = false)
         {
             var fgColor = Console.ForegroundColor;
             var bgColor = Console.BackgroundColor;
-            if (Console.KeyAvailable || ++curPos > Console.WindowHeight - 2 || force)
+            if (Console.KeyAvailable || ++pagerRowCount > Console.WindowHeight - 2 || force)
             {
                 try
                 {
+                    var ct = Console.CursorTop;
+                    var cl = Console.CursorLeft;
+                    var ww = Console.WindowWidth;
+                    Console.SetCursorPosition(ww - 5, Console.WindowTop);
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.Write("pager");
                     Console.ResetColor();
+                    Console.SetCursorPosition(cl, ct);
                     var response = Console.ReadLine();
-                    Console.CursorTop -= 1; // going up one line
-                    curPos = 0;
+                    pagerRowCount = 0;
                     if (!force && string.IsNullOrWhiteSpace(response))
                     {
-
+                        Console.CursorTop -= 1; // going up one line
                         return;
                     }
-                    var match = responseRegExp.Match(response);
-                    if (match.Success)
+                    var txts = new List<string>();
+                    var numbers = new List<int>();
+                    foreach (Match ma in responseRegExp.Matches(response))
                     {
-                        var str = match.Groups["txt"].Value.ToLower();
-                        var numStr = match.Groups["digits"].Value;
-                        int number = 0;
-                        if (numStr.Length > 0)
+                        if (!ma.Success)
                         {
-                            number = int.Parse(numStr);
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("match not succeeded");
+                            return;
                         }
-                        throw new CmdLineInterrupt(str, number);
+                        var txt = ma.Groups["txt"].Value;
+                        var le = ma.Groups["le"].Value;
+                        var ue = ma.Groups["ue"].Value;
+                        var sn = ma.Groups["sn"].Value;
+                        if (!string.IsNullOrEmpty(txt))
+                        {
+                            txts.Add(txt);
+                        }
+                        else if (!string.IsNullOrEmpty(le) && !string.IsNullOrEmpty(ue))
+                        {
+                            var ile = int.Parse(le);
+                            var iue = int.Parse(ue);
+                            for (int i = ile; i <= iue; i++)
+                            {
+                                numbers.Add(i);
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(sn))
+                        {
+                            numbers.Add(int.Parse(sn));
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("parsing matched response failed");
+                            return;
+                        }
                     }
-                    else
-                    {
-                        ExLog($"cannot match {response}", null);
-                    }
+                    throw new CmdLineInterrupt(txts, numbers);
                 }
                 finally
                 {
@@ -285,14 +333,21 @@ namespace CliUi
         public void Scan4Commands()
         {
             var cmdLineAssemblyName = this.GetType().Assembly.GetName();
+            if (Debug)
+            {
+                Console.WriteLine($"CmdLineUi assembly is {cmdLineAssemblyName}");
+            }
             foreach (var loaded_assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
+                if (Debug)
+                {
+                    Console.WriteLine($"loaded assembly {loaded_assembly.FullName}");
+                }
                 try
                 {
                     foreach (var dep_assembly in loaded_assembly.GetReferencedAssemblies())
                     {
-                        if (cmdLineAssemblyName.Name.CompareTo(dep_assembly.Name) == 0 &&
-                            cmdLineAssemblyName.Version.CompareTo(dep_assembly.Version) == 0)
+                        if (cmdLineAssemblyName.Name.CompareTo(dep_assembly.Name) == 0)
                         {
                             if (Debug)
                             {

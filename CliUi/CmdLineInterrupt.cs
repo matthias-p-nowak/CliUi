@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
 namespace CliUi
@@ -6,8 +7,8 @@ namespace CliUi
     [Serializable]
     public class CmdLineInterrupt : Exception
     {
-        public readonly string Text;
-        public readonly int Number;
+        public readonly List<string> Words;
+        public readonly List<int> Numbers;
 
         public CmdLineInterrupt()
         {
@@ -17,15 +18,25 @@ namespace CliUi
         {
         }
 
-        public CmdLineInterrupt(string str, int number) : base($"User returned {str},{number}")
+        public CmdLineInterrupt(int number)
         {
-            this.Text = str;
-            this.Number = number;
+            Words = new List<string>();
+            Numbers = new List<int>(1)
+            {
+                number
+            };
         }
 
         public CmdLineInterrupt(string message, Exception innerException) : base(message, innerException)
         {
         }
+
+        public CmdLineInterrupt(List<string> txts, List<int> numbers) : base($"user response {txts}, {numbers}")
+        {
+            this.Words = txts;
+            this.Numbers = numbers;
+        }
+
 
         protected CmdLineInterrupt(SerializationInfo info, StreamingContext context) : base(info, context)
         {

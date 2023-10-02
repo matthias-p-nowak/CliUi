@@ -10,6 +10,7 @@ namespace CliUi
     /// </summary>
     public class CmdLineUi
     {
+
         /// <summary>
         /// also those characters are added to the search string
         /// </summary>
@@ -36,7 +37,14 @@ namespace CliUi
         /// .when false, the loop of executing commands will end
         /// </summary>
         private bool running = true;
+        /// <summary>
+        /// Be more verbose during execution - especially for Scan4Commands
+        /// </summary>
         public bool Debug = false;
+        /// <summary>
+        /// A simple way to log some exception to a file when exceptions happen
+        /// Assign a function <code>void Func(string msg, Exception ex)</code>
+        /// </summary>
         public Action<string, Exception> ExLog = DummyLog;
         // field for the property
         private string currentCommand;
@@ -44,6 +52,18 @@ namespace CliUi
         /// The phrase to use for exiting the application
         /// </summary>
         public string ExitPhrase = "Exit application";
+        /// <summary>
+        /// Response when a command was not found
+        /// </summary>
+        public string CommandNotFound = "sorry";
+        /// <summary>
+        /// Response when the choice was not recognized
+        /// </summary>
+        public string WrongChoiceAnswer = "an invalid choice you made";
+        /// <summary>
+        /// Response when the entered keystrokes did not match any command
+        /// </summary>
+        public string CouldNotMatchResponse = "match not succeeded";
 
         // for the Pager to work
         private int pagerRowCount = 0;
@@ -57,7 +77,6 @@ namespace CliUi
         /// </summary>
         /// <param name="cmdLine">the command line to add</param>
         /// <param name="action">the action to be executed</param>
-        /// <param name="p">variable priority</param>
         /// <returns></returns>
         public void Add(string cmdLine, Action action)
         {
@@ -98,6 +117,7 @@ namespace CliUi
         {
             // initial settings
             running = true;
+            long loopStream = 0;
             // for ending the loop
             lock (commands)
             {
@@ -111,11 +131,13 @@ namespace CliUi
                     Thread.Sleep(250);
                     continue;
                 }
+                (string cmdLine, Action action)? selectedCommand = null;
                 lock (Console.Out)
                 {
                     var keystrokes = string.Empty;
                     if (!Console.KeyAvailable)
                         continue; // someone else took the keypress during the lock
+                    CheckSameStream(ref loopStream); // just advancing that counter
                     var ct = Console.CursorTop;
                     var cl = Console.CursorLeft;
                     var ww = Console.WindowWidth;
@@ -143,28 +165,13 @@ namespace CliUi
                                 Console.ForegroundColor = ConsoleColor.Gray;
                                 Console.BackgroundColor = ConsoleColor.DarkBlue;
                                 Console.Write($"{cmdPos,4} ");
-                                int pos = 0;
-                                foreach (int p in posList)
-                                {
-                                    if (p > pos)
-                                    {
-                                        Console.ForegroundColor = ConsoleColor.Blue;
-                                        Console.Write(cmd.cmdLine.Substring(pos, p - pos));
-                                    }
-                                    Console.ForegroundColor = ConsoleColor.White;
-                                    Console.Write(cmd.cmdLine.Substring(p, 1));
-                                    pos = p + 1;
-                                }
-                                Console.ForegroundColor = ConsoleColor.Blue;
-                                Console.Write(cmd.cmdLine.Substring(pos));
-                                var s = new string(' ', Console.BufferWidth - Console.CursorLeft - 1);
-                                Console.WriteLine(s);
+                                WriteLineWithMatches(cmd.cmdLine, posList, ConsoleColor.Gray, ConsoleColor.White);
                                 Pager();
                             }
                             if (remainingChoices.Count == 0)
                             {
                                 Console.ForegroundColor = ConsoleColor.Yellow;
-                                Console.WriteLine("sorry");
+                                Console.WriteLine(CommandNotFound);
                                 continue;
                             }
                             if (remainingChoices.Count == 1)
@@ -188,24 +195,19 @@ namespace CliUi
                             {
                                 Console.ResetColor();
                                 Console.ForegroundColor = ConsoleColor.Red;
-                                Console.WriteLine($"choice is invalid (too high)");
+                                Console.Write($"choice exceeds available items");
+                                Console.ResetColor();
+                                Console.WriteLine();
                                 continue;
                             }
-                            var cmd = remainingChoices[interrupt.Numbers[0] - 1];
-                            currentCommand = cmd.cmdLine;
-                            Add(cmd.cmdLine, cmd.action); // moving it up
-                            Console.ForegroundColor = ConsoleColor.Green;
-                            Console.BackgroundColor = ConsoleColor.Black;
-                            Console.Write((char)187);
-                            Console.WriteLine(cmd.cmdLine);
-                            Console.ResetColor();
-                            pagerRowCount=0;
-                            cmd.action();
+                            selectedCommand = remainingChoices[interrupt.Numbers[0] - 1];
                         }
                         else
                         {
                             Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("invalid choice you made");
+                            Console.Write(WrongChoiceAnswer);
+                            Console.ResetColor();
+                            Console.WriteLine();
                         }
                     }
                     finally
@@ -213,25 +215,79 @@ namespace CliUi
                         Console.ResetColor();
                     }
                 }
+                if (selectedCommand != null)
+                {
+                    currentCommand = selectedCommand.Value.cmdLine;
+                    Add(selectedCommand.Value.cmdLine, selectedCommand.Value.action); // moving it up
+                    lock (Console.Out)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.BackgroundColor = ConsoleColor.Black;
+                        Console.Write((char)187);
+                        Console.WriteLine(selectedCommand.Value.cmdLine);
+                        Console.ResetColor();
+                    }
+                    pagerRowCount = 0;
+                    selectedCommand.Value.action();
+                }
             } // while running
-              
+
         }
+
+        /// <summary>
+        /// Writes the string with the positions highlighted
+        /// </summary>
+        /// <param name="cmdLine">the line to print</param>
+        /// <param name="posList">the positions to highlight</param>
+        /// <param name="low">the lower contrast color</param>
+        /// <param name="high">the high contrast color</param>
+        public static void WriteLineWithMatches(string cmdLine, List<int> posList, ConsoleColor low, ConsoleColor high)
+        {
+            int pos = 0;
+            foreach (int p in posList)
+            {
+                if (p > pos)
+                {
+                    Console.ForegroundColor = low;
+                    Console.Write(cmdLine.Substring(pos, p - pos));
+                }
+                Console.ForegroundColor = high;
+                Console.Write(cmdLine.Substring(p, 1));
+                pos = p + 1;
+            }
+            Console.ForegroundColor = low;
+            Console.Write(cmdLine.Substring(pos));
+            var s = new string(' ', Console.BufferWidth - Console.CursorLeft - 1);
+            Console.WriteLine(s);
+        }
+
         /// <summary>
         /// Resetting the row count for the Pager
         /// </summary>
         public void PagerReset()
         {
-            pagerRowCount= 0;
+            pagerRowCount = 0;
         }
 
         private Regex responseRegExp = new Regex(@"\s*(?:(?<txt>[a-zA-Z]+)|(?<le>\d+)-(?<ue>\d+)|(?<sn>\d+))[,\s]*");
-
+        private long currentOutputCounter=0;
 
         /// <summary>
-        /// 
+        /// Check if the output from this stream was interrupted or not.
         /// </summary>
-        /// <param name="curPos"></param>
-        /// <param name="force"></param>
+        /// <param name="outputCounter">keeps track of streams, use one for each stream</param>
+        /// <returns>returns true if the previous call was from the same thread, returns false if another function interrupted this output</returns>
+        public bool CheckSameStream(ref long outputCounter)
+        {
+            var same = outputCounter == currentOutputCounter;
+            outputCounter = ++currentOutputCounter;
+            return same;
+        }
+
+        /// <summary>
+        /// Returns immediately when no key is pressed and called less times than the window is high, counter is reset by PagerReset
+        /// </summary>
+        /// <param name="force">wait for user input</param>
         /// <exception cref="CmdLineInterrupt">throws an exception if user enters something else than return</exception>
         public void Pager(bool force = false)
         {
@@ -263,7 +319,7 @@ namespace CliUi
                         if (!ma.Success)
                         {
                             Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("match not succeeded");
+                            Console.WriteLine(CouldNotMatchResponse);
                             return;
                         }
                         var txt = ma.Groups["txt"].Value;
@@ -310,7 +366,7 @@ namespace CliUi
         /// <param name="heystack">the full string to match</param>
         /// <param name="keystrokes">the needle to find</param>
         /// <returns>a list of matching positions</returns>
-        private static List<int> CheckString(string heystack, string keystrokes)
+        public static List<int> CheckString(string heystack, string keystrokes)
         {
             heystack = heystack.ToLower();
             keystrokes = keystrokes.ToLower();
@@ -389,6 +445,21 @@ namespace CliUi
                 }
 
             }
+        }
+
+        /// <summary>
+        /// Saves the cursor position and colors for restore
+        /// </summary>
+        /// <returns>Saved datastructure with data</returns>
+        public static SavedCursor SaveCursor()
+        {
+            return new SavedCursor()
+            {
+                cl = Console.CursorLeft,
+                ct = Console.CursorTop,
+                cfg = Console.ForegroundColor,
+                cbg = Console.BackgroundColor
+            };
         }
     }
 }

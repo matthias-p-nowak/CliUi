@@ -64,6 +64,10 @@ namespace CliUi
         /// Response when the entered keystrokes did not match any command
         /// </summary>
         public string CouldNotMatchResponse = "match not succeeded";
+        /// <summary>
+        /// Raising event before execution with the intended command as argument
+        /// </summary>
+        public event Action<string> Cmd2Execute;
 
         // for the Pager to work
         private int pagerRowCount = 0;
@@ -141,9 +145,9 @@ namespace CliUi
                     var ct = Console.CursorTop;
                     var cl = Console.CursorLeft;
                     var ww = Console.WindowWidth;
-                    Console.SetCursorPosition(ww - 3, Console.WindowTop);
+                    Console.SetCursorPosition(ww - 7, Console.WindowTop);
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.Write("cmd");
+                    Console.Write("  cmd  ");
                     Console.ResetColor();
                     Console.SetCursorPosition(cl, ct);
                     keystrokes = Console.ReadLine();
@@ -228,10 +232,11 @@ namespace CliUi
                         Console.ResetColor();
                     }
                     pagerRowCount = 0;
+                    if (Cmd2Execute != null)
+                        Cmd2Execute(currentCommand);
                     selectedCommand.Value.action();
                 }
             } // while running
-
         }
 
         /// <summary>
@@ -270,7 +275,7 @@ namespace CliUi
         }
 
         private Regex responseRegExp = new Regex(@"\s*(?:(?<txt>[a-zA-Z]+)|(?<le>\d+)-(?<ue>\d+)|(?<sn>\d+))[,\s]*");
-        private long currentOutputCounter=0;
+        private long currentOutputCounter = 0;
 
         /// <summary>
         /// Check if the output from this stream was interrupted or not.
@@ -300,9 +305,9 @@ namespace CliUi
                     var ct = Console.CursorTop;
                     var cl = Console.CursorLeft;
                     var ww = Console.WindowWidth;
-                    Console.SetCursorPosition(ww - 5, Console.WindowTop);
+                    Console.SetCursorPosition(ww - 7, Console.WindowTop);
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.Write("pager");
+                    Console.Write(" pager ");
                     Console.ResetColor();
                     Console.SetCursorPosition(cl, ct);
                     var response = Console.ReadLine();

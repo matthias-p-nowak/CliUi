@@ -310,6 +310,10 @@ namespace CliUi
                     Console.Write(" pager ");
                     Console.ResetColor();
                     Console.SetCursorPosition(cl, ct);
+                    if (force)
+                    {
+                        Console.Write("==>");
+                    }
                     var response = Console.ReadLine();
                     pagerRowCount = 0;
                     if (!force && string.IsNullOrWhiteSpace(response))

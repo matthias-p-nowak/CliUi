@@ -79,6 +79,13 @@ namespace CliTest
             Console.WriteLine($"buffer height is {Console.BufferHeight}");
         }
 
+        [CmdLine("Throw exception")]
+        public static void ThrowAnException()
+        {
+            Console.WriteLine("Bring it on");
+            throw new Exception("something bad things happen");
+        }
+
         static void Main(string[] args)
         {
             System.Diagnostics.Debugger.Launch();

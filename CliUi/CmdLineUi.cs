@@ -427,12 +427,41 @@ namespace CliUi
                                     foreach (CmdLineAttribute attr in method.GetCustomAttributes(typeof(CmdLineAttribute), false))
                                     {
                                         var this_method = method;
-                                        Action ac = () => { this_method.Invoke(null, new object[] { }); };
+                                        var this_assembly = loaded_assembly;
+                                        var this_type = loaded_type;
+                                        Action ac = () =>
+                                        {
+                                            try
+                                            {
+                                                this_method.Invoke(null, new object[] { });
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                lock (Console.Out)
+                                                {
+                                                    Console.BackgroundColor = ConsoleColor.DarkRed;
+                                                    Console.ForegroundColor = ConsoleColor.White;
+                                                    var assemblyName = this_assembly.GetName().Name;
+                                                    var typeName = this_type.Name;
+                                                    var methodName = this_method.Name;
+                                                    if(ex.InnerException!= null)
+                                                        ex=ex.InnerException;
+                                                    Console.WriteLine($"{assemblyName}.{typeName}.{methodName} threw {ex.GetType()}");
+                                                    Console.ResetColor();
+                                                    for (var cex = ex; cex != null; cex = cex.InnerException)
+                                                    {
+                                                        Console.WriteLine($"{cex.GetType()}: {cex.Message}");
+                                                        Console.WriteLine(cex.StackTrace);
+                                                    }
+                                                }
+                                            }
+                                        };
                                         Add(attr.CmdLine, ac);
                                         if (Debug)
                                         {
                                             Console.WriteLine($"added '{attr.CmdLine}' -> {loaded_assembly.GetName().Name}.{loaded_type.Name}.{this_method.Name}");
                                         }
+                                        break;
                                     }
                                     foreach (CmdLineAdderAttribute attr in method.GetCustomAttributes(typeof(CmdLineAdderAttribute), false))
                                     {
@@ -444,7 +473,7 @@ namespace CliUi
                                     }
                                 }
                             }
-                            break;
+                            break; // once is enough
                         }
                     }
                 }
